@@ -14,6 +14,8 @@
 
 import {newEnforcer, Enforcer, Util} from 'casbin';
 import {SequelizeAdapter} from '../src/adapter';
+import {Sequelize} from 'sequelize';
+import {CasbinRule, initModel} from '../src/casbinRule';
 
 function testGetPolicy(e: Enforcer, res: string[][]) {
     const myRes = e.getPolicy();
@@ -23,12 +25,18 @@ function testGetPolicy(e: Enforcer, res: string[][]) {
 }
 
 test('TestAdapter', async () => {
-    const a = await SequelizeAdapter.newAdapter({
+
+    const sequelize = new Sequelize({
         username: 'root',
         password: '',
         database: 'casbin',
         dialect: 'mysql'
     });
+
+    initModel(sequelize);
+    await sequelize.sync();
+
+    const a = await SequelizeAdapter.newAdapter(sequelize);
 
     try {
         // Because the DB is empty at first,

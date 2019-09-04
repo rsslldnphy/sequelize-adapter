@@ -13,48 +13,49 @@
 // limitations under the License.
 
 import {Adapter, Helper, Model} from 'casbin';
-import {Sequelize, SequelizeOptions} from 'sequelize-typescript';
-import {CasbinRule} from './casbinRule';
+import * as Sequelize from 'sequelize';
+import { CasbinRule, initModel } from './casbinRule';
 
 /**
  * SequelizeAdapter represents the Sequelize adapter for policy storage.
  */
 export class SequelizeAdapter implements Adapter {
-    private option: SequelizeOptions;
-    private sequelize: Sequelize;
+    private sequelize: Sequelize.Sequelize;
+    private CasbinRule: Sequelize.Model;
+    private isOwnSequelizeInstance: boolean;
 
-    constructor(option: SequelizeOptions) {
-        this.option = option;
+    constructor(option: Sequelize.Options | Sequelize.Sequelize) {
+      if (option instanceof Sequelize.Sequelize) {
+        this.sequelize = option;
+        this.isOwnSequelizeInstance = false;
+      } else {
+        this.sequelize = new Sequelize.Sequelize(option);
+        this.isOwnSequelizeInstance = true;
+      }
     }
 
     /**
      * newAdapter is the constructor.
      * @param option sequelize connection option
      */
-    public static async newAdapter(option: SequelizeOptions) {
+    public static async newAdapter(option: Sequelize.Options | Sequelize.Sequelize) {
         const a = new SequelizeAdapter(option);
         await a.open();
-
         return a;
     }
 
     private async open() {
-        this.sequelize = new Sequelize(this.option);
-        await this.sequelize.authenticate();
-        this.sequelize.addModels([CasbinRule]);
-        await this.createTable();
+        initModel(this.sequelize);
     }
 
     public async close() {
+      if (this.isOwnSequelizeInstance) {
         await this.sequelize.close();
+      }
     }
 
-    private async createTable() {
-        await this.sequelize.sync();
-    }
-
-    private async dropTable() {
-        await this.sequelize.getRepository(CasbinRule).destroy({where: {}, truncate: true});
+    private async truncateTable() {
+        await CasbinRule.destroy({where: {}, truncate: true});
     }
 
     private loadPolicyLine(line: CasbinRule, model: Model) {
@@ -66,7 +67,7 @@ export class SequelizeAdapter implements Adapter {
      * loadPolicy loads all policy rules from the storage.
      */
     public async loadPolicy(model: Model) {
-        const lines = await this.sequelize.getRepository(CasbinRule).findAll();
+        const lines = await CasbinRule.findAll();
 
         for (const line of lines) {
             this.loadPolicyLine(line, model);
@@ -103,8 +104,7 @@ export class SequelizeAdapter implements Adapter {
      * savePolicy saves all policy rules to the storage.
      */
     public async savePolicy(model: Model) {
-        await this.dropTable();
-        await this.createTable();
+        await this.truncateTable();
 
         let astMap = model.model.get('p')!;
         for (const [ptype, ast] of astMap) {
@@ -147,7 +147,7 @@ export class SequelizeAdapter implements Adapter {
                 where[key] = line[key];
             });
 
-        await this.sequelize.getRepository(CasbinRule).destroy({where});
+        await CasbinRule.destroy({where});
     }
 
     /**

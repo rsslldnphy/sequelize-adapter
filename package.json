@@ -15,7 +15,6 @@
   "devDependencies": {
     "@types/jest": "^24.0.15",
     "@types/node": "^12.7.4",
-    "@types/sequelize": "^4.28.3",
     "coveralls": "^3.0.2",
     "husky": "^3.0.5",
     "jest": "^24.8.0",
@@ -29,8 +28,7 @@
   "dependencies": {
     "casbin": "^3.0.1",
     "reflect-metadata": "^0.1.12",
-    "sequelize": "^5.8.10",
-    "sequelize-typescript": "^1.0.0-beta.3"
+    "sequelize": "^5.8.10"
   },
   "files": [
     "lib",
